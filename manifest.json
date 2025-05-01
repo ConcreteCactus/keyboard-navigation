@@ -1,5 +1,5 @@
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "Keyboard Navigation",
     "version": "1.0",
     "icons": {
@@ -14,7 +14,20 @@
             "matches": [ "<all_urls>" ],
             "js": ["keyboard-navigation.js"]
         }
-    ]
+    ],
+    "action": {
+        "default_title": "Keyboard Navigation Settings",
+        "default_popup": "popup.html"
+    },
+    "options_ui": {
+        "page": "options.html"
+    },
+    "permissions": [ "storage" ],
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "keyboard-navigation@aronharnasi.com"
+        }
+    }
 }
 
 

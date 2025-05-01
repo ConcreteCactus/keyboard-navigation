@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-console.log("Keyboard navigation enabled.");
 
-const focus_keys = "jdkslaieurowghtzvncmxby";
+var focus_keys = "jdkslaieurowghtzvncmxby";
 
 var current_focusables = [];
 var are_focusables_marked = false;
@@ -27,6 +26,14 @@ marking_parent.style.display = "none";
 document.body.appendChild(marking_parent);
 
 var name_input = [];
+
+console.log("Keyboard navigation enabled.");
+
+browser.storage.sync.get("settings").then((result) => {
+    focus_keys = result.settings.focusKeys;
+}, () => {
+    console.log("Couldn't set focus keys. Using default value.");
+});
 
 function get_focusables() {
     let focusables = document.querySelectorAll(
