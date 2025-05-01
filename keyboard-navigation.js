@@ -106,6 +106,7 @@ function mark_current_focusables() {
         marking.style.padding = "2px";
         marking.style.zIndex = "100000";
         marking.style.display = "block";
+        marking.style.color = "black";
         current_markings.push(marking);
         marking_parent.appendChild(marking);
     }
@@ -198,11 +199,11 @@ function remove_current_markings() {
     name_input = [];
 }
 
-addEventListener("keyup", (event) => {
+document.addEventListener("keyup", (event) => {
     if (event.key == "Escape" && are_focusables_marked) {
         remove_current_markings();
         are_focusables_marked = false;
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         event.preventDefault();
         return false;
     }
@@ -219,7 +220,7 @@ addEventListener("keyup", (event) => {
             mark_current_focusables();
         }
         are_focusables_marked = !are_focusables_marked;
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         event.preventDefault();
         return false;
     } 
@@ -239,13 +240,13 @@ addEventListener("keyup", (event) => {
                 current_focusables[index].focus({ focusVisible: true });
             }
         }
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         event.preventDefault();
         return false;
     }
-});
+}, { capture: true });
 
-addEventListener("scroll", (event) => {
+document.addEventListener("scroll", (event) => {
     if (are_focusables_marked) {
         remove_current_markings();
         are_focusables_marked = false;
