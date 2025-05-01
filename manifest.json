@@ -2,6 +2,9 @@
     "manifest_version": 2,
     "name": "Keyboard Navigation",
     "version": "1.0",
+    "icons": {
+        "8": "icon.png"
+    },
 
     "description": "Makes it easier to navigate using only a keyboard.",
     "author": "Áron Hárnási",

@@ -1,1 +1,0 @@
-- Figure out a way to select text on a page.
