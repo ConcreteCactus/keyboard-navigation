@@ -1,3 +1,19 @@
+// keyboard-navigation: A simple tool to navigate a webpage.
+// Copyright (C) 2025  Áron Hárnási
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 console.log("Keyboard navigation enabled.");
 
 const focus_keys = "jdkslaieurowghtzvncmxby";
@@ -17,7 +33,7 @@ function get_focusables() {
         `a[href], area[href], input:not([disabled]),
          select:not([disabled]), textarea:not([disabled]),
          button:not([disabled]), iframe:not([disabled]),
-         [tabindex] [onclick]`
+         [tabindex], [onclick]`
     );
 
     return focusables;
@@ -201,7 +217,7 @@ function remove_current_markings() {
 
 document.addEventListener("keyup", (event) => {
 
-    if (document.activeElement.tag == "INPUT"
+    if (document.activeElement.tagName == "INPUT"
     ||  document.activeElement.isContentEditable) {
         return true;
     }

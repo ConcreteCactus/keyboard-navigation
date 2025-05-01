@@ -4,6 +4,7 @@
     "version": "1.0",
 
     "description": "Makes it easier to navigate using only a keyboard.",
+    "author": "Áron Hárnási",
 
     "content_scripts": [
         {
