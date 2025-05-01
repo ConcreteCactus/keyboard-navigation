@@ -200,6 +200,12 @@ function remove_current_markings() {
 }
 
 document.addEventListener("keyup", (event) => {
+
+    if (document.activeElement.tag == "INPUT"
+    ||  document.activeElement.isContentEditable) {
+        return true;
+    }
+
     if (event.key == "Escape" && are_focusables_marked) {
         remove_current_markings();
         are_focusables_marked = false;
