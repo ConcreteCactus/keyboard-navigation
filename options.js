@@ -9,6 +9,8 @@ const reset_button = document.getElementById("reset");
 
 const defaultFocusKeys = "jdkslaieurowghtzvncmxby";
 
+const sync_storage = chrome?.storage.sync || browser?.storage.sync;
+
 settings_form.addEventListener("submit", (event) => {
     event.preventDefault();
 
@@ -39,7 +41,7 @@ settings_form.addEventListener("submit", (event) => {
     error_message_p.innerText = "";
     success_message_p.innerText = "";
 
-    let set_settings = browser.storage.sync.set({ settings: {
+    let set_settings = sync_storage.set({ settings: {
         focusKeys: focus_keys_value
     }});
     set_settings.then(() => {
@@ -52,7 +54,7 @@ settings_form.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-    let get_settings = browser.storage.sync.get("settings");
+    let get_settings = sync_storage.get("settings");
 
     get_settings.then((result) => {
         focus_keys_input.disabled = false;

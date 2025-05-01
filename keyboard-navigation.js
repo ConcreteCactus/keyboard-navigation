@@ -16,21 +16,23 @@
 
 
 var focus_keys = "jdkslaieurowghtzvncmxby";
-
 var current_focusables = [];
 var are_focusables_marked = false;
 var current_markings = [];
-
 var marking_parent = document.createElement("div");
-marking_parent.style.display = "none";
-document.body.appendChild(marking_parent);
-
 var name_input = [];
+
+const sync_storage = chrome?.storage.sync || browser?.storage.sync;
 
 console.log("Keyboard navigation enabled.");
 
-browser.storage.sync.get("settings").then((result) => {
-    focus_keys = result.settings.focusKeys;
+marking_parent.style.display = "none";
+document.body.appendChild(marking_parent);
+
+sync_storage.get("settings").then((result) => {
+    if (result.settings != undefined) {
+        focus_keys = result.settings?.focusKeys;
+    }
 }, () => {
     console.log("Couldn't set focus keys. Using default value.");
 });
@@ -92,12 +94,12 @@ function update_current_focusables() {
             continue;
         }
 
-        let computedStyle = window.getComputedStyle(focusables[i]);
-        if (window.getComputedStyle(focusables[i]).visibility === "hidden") {
+        let computed_style = window.getComputedStyle(focusables[i]);
+        if (computed_style.visibility === "hidden") {
             continue;
         }
         
-        if (window.getComputedStyle(focusables[i]).display === "none") {
+        if (computed_style.display === "none") {
             continue;
         }
 
@@ -106,14 +108,14 @@ function update_current_focusables() {
 }
 
 function compute_index_name_char_count() {
-    let indexNameCharCount = 1;
+    let index_name_char_count = 1;
     let focusableCount = current_focusables.length;
     while (focusableCount > focus_keys.length - 1) {
         focusableCount = Math.floor(focusableCount / focus_keys.length);
-        indexNameCharCount++;
+        index_name_char_count++;
     }
 
-    return indexNameCharCount;
+    return index_name_char_count;
 }
 
 function mark_current_focusables() {
@@ -127,7 +129,7 @@ function mark_current_focusables() {
         marking.style.border = "solid";
         marking.style.borderWidth = "1px";
         marking.style.padding = "2px";
-        marking.style.zIndex = "100000";
+        marking.style.zIndex = "2147483646";
         marking.style.display = "block";
         marking.style.color = "black";
         current_markings.push(marking);
@@ -135,7 +137,7 @@ function mark_current_focusables() {
     }
 
 
-    let indexNameCharCount = compute_index_name_char_count();
+    let index_name_char_count = compute_index_name_char_count();
 
     for (let i = 0; i < current_focusables.length; i++) {
         let rect = current_focusables[i].getBoundingClientRect();
@@ -161,7 +163,7 @@ function mark_current_focusables() {
         let marking = current_markings[i];
         marking.style.left = `${markingX + Math.random() * 4}px`;
         marking.style.top = `${markingY + Math.random() * 4}px`;
-        marking.innerText = index_to_name(i, indexNameCharCount).join("");
+        marking.innerText = index_to_name(i, index_name_char_count).join("");
         marking.style.display = "block";
     }
 }
