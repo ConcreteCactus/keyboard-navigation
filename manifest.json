@@ -1,0 +1,16 @@
+{
+    "manifest_version": 2,
+    "name": "Keyboard Navigation",
+    "version": "1.0",
+
+    "description": "Makes it easier to navigate using only a keyboard.",
+
+    "content_scripts": [
+        {
+            "matches": [ "<all_urls>" ],
+            "js": ["keyboard-navigation.js"]
+        }
+    ]
+}
+
+
