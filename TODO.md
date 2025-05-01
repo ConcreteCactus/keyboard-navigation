@@ -1,0 +1,2 @@
+- Figure out a way to select text on a page.
+- Make sure plugin keys don't trigger other events on a page.
