@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+// Constants
+const whitespace_chars = " \t\n";
+
 // Config variables
 var config_select_keys = "jdklaieurowghtzvncmxby";
 
@@ -24,11 +27,11 @@ const marking_parent_div = document.createElement("div");
 const sync_storage = chrome?.storage.sync || browser?.storage.sync;
 
 // Modes
-const mode_normal               = 0;
-const mode_select_focus         = 1;
-const mode_select_textual       = 2;
-const mode_select_textual_start = 3;
-const mode_select_textual_end   = 4;
+const mode_normal               = "mode_normal";
+const mode_select_focus         = "mode_select_focus";
+const mode_select_textual       = "mode_select_textual";
+const mode_select_textual_start = "mode_select_textual_start";
+const mode_select_textual_end   = "mode_select_textual_end";
 
 // State
 var state_mode               = mode_normal;
@@ -47,6 +50,40 @@ function state_set_marking_char_count() {
     }
 }
 
+function html_element_is_visible(element) {
+    let rect = element.getBoundingClientRect();
+    if (rect.x + rect.width < 0) {
+        return false;
+    }
+
+    if (rect.y + rect.height < 0) {
+        return false;
+    }
+
+    if (rect.x > window.innerWidth) {
+        return false;
+    }
+
+    if (rect.y > window.innerHeight) {
+        return false;
+    }
+
+    if (element.offsetHeight <= 0 || element.offsetWidth <= 0) {
+        return false;
+    }
+
+    let computed_style = window.getComputedStyle(element);
+    if (computed_style.visibility === "hidden") {
+        return false;
+    }
+    
+    if (computed_style.display === "none") {
+        return false;
+    }
+
+    return true;
+}
+
 function state_set_selectables_to_focusables() {
     state_selectables = [];
 
@@ -58,44 +95,61 @@ function state_set_selectables_to_focusables() {
     );
 
     for (let i = 0; i < focusables.length; i++) {
-        let rect = focusables[i].getBoundingClientRect();
-        if (rect.x + rect.width < 0) {
-            continue;
+        if (html_element_is_visible(focusables[i])) {
+            state_selectables.push(focusables[i]);
         }
-
-        if (rect.y + rect.height < 0) {
-            continue;
-        }
-
-        if (rect.x > window.innerWidth) {
-            continue;
-        }
-
-        if (rect.y > window.innerHeight) {
-            continue;
-        }
-
-        if (focusables[i].offsetHeight <= 0 || focusables[i].offsetWidth <= 0) {
-            continue;
-        }
-
-        let computed_style = window.getComputedStyle(focusables[i]);
-        if (computed_style.visibility === "hidden") {
-            continue;
-        }
-        
-        if (computed_style.display === "none") {
-            continue;
-        }
-
-        state_selectables.push(focusables[i]);
     }
 
     state_set_marking_char_count();
 }
 
+function string_has_non_whitespace(str) {
+    for (let i = 0; i < str.length; i++) {
+        let found = false;
+        for (let j = 0; j < whitespace_chars.length; j++) {
+            if (str[i] === whitespace_chars[j]) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function state_set_selectables_to_textuals_rec(element) {
+
+    let add_to_selectables = false;
+    for (let i = 0; i < element.childNodes.length; i++) {
+        let child = element.childNodes[i];
+        if (child instanceof HTMLElement) {
+            state_set_selectables_to_textuals_rec(child);
+        } else if (child.nodeName === "#text" &&
+                   child.textContent.length > 3 &&
+                   string_has_non_whitespace(child.textContent)) {
+            add_to_selectables = true;
+        }
+    }
+
+    if (add_to_selectables) {
+        if (html_element_is_visible(element)) {
+            state_selectables.push(element);
+        }
+    }
+}
+
+function state_set_selectables_to_textuals() {
+    state_selectables = [];
+    state_set_selectables_to_textuals_rec(document.body);
+    console.log("selectables", state_selectables);
+    state_set_marking_char_count();
+}
+
 function mark_selectables() {
-    marking_parent_div.style.display = "block";
 
     for (let i = state_markings.length; i < state_selectables.length; i++) {
         let marking = document.createElement("div");
@@ -139,6 +193,12 @@ function mark_selectables() {
         marking.innerText = index_to_name(i).join("");
         marking.style.display = "block";
     }
+
+    for (let i = state_selectables.length; i < state_markings.length; i++) {
+        state_markings[i].style.display = "none";
+    }
+
+    marking_parent_div.style.display = "block";
 
 }
 
@@ -200,10 +260,20 @@ function state_set_mode(next_mode) {
     if (state_mode === next_mode) {
         return false;
     }
+
+    console.log("Mode transition:", state_mode, "->", next_mode);
     
     if (state_mode === mode_normal) {
         if (next_mode === mode_select_focus) {
             state_set_selectables_to_focusables();
+            mark_selectables();
+            state_name_input = [];
+            state_mode = next_mode;
+            return true;
+        }
+
+        if (next_mode === mode_select_textual) {
+            state_set_selectables_to_textuals();
             mark_selectables();
             state_name_input = [];
             state_mode = next_mode;
@@ -248,6 +318,11 @@ function event_listener_keyup_handler(key) {
         return false;
     }
 
+    if (key === "s" && state_mode !== mode_select_textual) {
+        state_set_mode(mode_select_textual);
+        return false;
+    }
+
     if (state_mode === mode_select_focus ||
         state_mode === mode_select_textual) {
 
@@ -287,8 +362,9 @@ function event_listener_scroll(event) {
 }
 
 function init() {
-    marking_parent_div.style.display = "none";
-    marking_parent_div.style.zIndex  = "2147483646";
+    marking_parent_div.style.display  = "none";
+    marking_parent_div.style.zIndex   = "2147483646";
+    marking_parent_div.style.position = "fixed";
     document.body.appendChild(marking_parent_div);
 
     sync_storage.get("settings").then((result) => {

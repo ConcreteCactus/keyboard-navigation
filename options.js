@@ -7,7 +7,7 @@ const success_message_p = document.getElementById("success-message");
 const settings_form = document.getElementById("settings-form");
 const reset_button = document.getElementById("reset");
 
-const defaultFocusKeys = "jdkslaieurowghtzvncmxby";
+const defaultFocusKeys = "jdklaieurowghtzvncmxby";
 
 const sync_storage = chrome?.storage.sync || browser?.storage.sync;
 
