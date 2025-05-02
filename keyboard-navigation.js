@@ -14,30 +14,42 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+// Config variables
+var config_select_keys = "jdklaieurowghtzvncmxby";
 
-var focus_keys = "jdkslaieurowghtzvncmxby";
-var current_focusables = [];
-var are_focusables_marked = false;
-var current_markings = [];
-var marking_parent = document.createElement("div");
-var name_input = [];
+// Dom elements
+const marking_parent_div = document.createElement("div");
 
+// Browser abstractions
 const sync_storage = chrome?.storage.sync || browser?.storage.sync;
 
-console.log("Keyboard navigation enabled.");
+// Modes
+const mode_normal               = 0;
+const mode_select_focus         = 1;
+const mode_select_textual       = 2;
+const mode_select_textual_start = 3;
+const mode_select_textual_end   = 4;
 
-marking_parent.style.display = "none";
-document.body.appendChild(marking_parent);
+// State
+var state_mode               = mode_normal;
+var state_selectables        = [];
+var state_name_input         = [];
+var state_markings           = [];
+var state_marking_char_count = 0;
 
-sync_storage.get("settings").then((result) => {
-    if (result.settings != undefined) {
-        focus_keys = result.settings?.focusKeys;
+function state_set_marking_char_count() {
+    state_marking_char_count = 1;
+
+    let selectable_count = state_selectables.length;
+    while (selectable_count > config_select_keys.length - 1) {
+        selectable_count = Math.floor(selectable_count / focus_keys.length);
+        state_marking_char_count++;
     }
-}, () => {
-    console.log("Couldn't set focus keys. Using default value.");
-});
+}
 
-function get_focusables() {
+function state_set_selectables_to_focusables() {
+    state_selectables = [];
+
     let focusables = document.querySelectorAll(
         `a[href], area[href], input:not([disabled]),
          select:not([disabled]), textarea:not([disabled]),
@@ -45,33 +57,6 @@ function get_focusables() {
          [tabindex], [onclick]`
     );
 
-    return focusables;
-}
-
-function print_current_focusables() {
-    const tags = [ "A", "AREA", "INPUT", "SELECT", "BUTTON",
-                   "IFRAME" ];
-    let tagCounts = Array(tags.length).fill(0);
-
-    for (let i = 0; i < current_focusables.length; i++) {
-        for (let j = 0; j < tags.length; j++) {
-            if (current_focusables[i].tagName === tags[j]) {
-                tagCounts[j]++;
-            }
-        }
-    }
-
-    for (let j = 0; j < tags.length; j++) {
-        console.log("tag", tags[j], "count", tagCounts[j]);
-    }
-}
-
-function update_current_focusables() {
-    current_focusables = [];
-
-    let focusables = get_focusables();
-
-    let viewport = window.visualViewport;
     for (let i = 0; i < focusables.length; i++) {
         let rect = focusables[i].getBoundingClientRect();
         if (rect.x + rect.width < 0) {
@@ -103,44 +88,32 @@ function update_current_focusables() {
             continue;
         }
 
-        current_focusables.push(focusables[i]);
-    }
-}
-
-function compute_index_name_char_count() {
-    let index_name_char_count = 1;
-    let focusableCount = current_focusables.length;
-    while (focusableCount > focus_keys.length - 1) {
-        focusableCount = Math.floor(focusableCount / focus_keys.length);
-        index_name_char_count++;
+        state_selectables.push(focusables[i]);
     }
 
-    return index_name_char_count;
+    state_set_marking_char_count();
 }
 
-function mark_current_focusables() {
+function mark_selectables() {
+    marking_parent_div.style.display = "block";
 
-    marking_parent.style.display = "block";
-
-    for (let i = current_markings.length; i < current_focusables.length; i++) {
+    for (let i = state_markings.length; i < state_selectables.length; i++) {
         let marking = document.createElement("div");
         marking.style.position = "fixed";
         marking.style.background = "lightBlue";
         marking.style.border = "solid";
         marking.style.borderWidth = "1px";
         marking.style.padding = "2px";
-        marking.style.zIndex = "2147483646";
         marking.style.display = "block";
         marking.style.color = "black";
-        current_markings.push(marking);
-        marking_parent.appendChild(marking);
+
+        state_markings.push(marking);
+        marking_parent_div.appendChild(marking);
     }
 
 
-    let index_name_char_count = compute_index_name_char_count();
-
-    for (let i = 0; i < current_focusables.length; i++) {
-        let rect = current_focusables[i].getBoundingClientRect();
+    for (let i = 0; i < state_selectables.length; i++) {
+        let rect = state_selectables[i].getBoundingClientRect();
         let markingX = rect.x;
         let markingY = rect.y;
 
@@ -160,35 +133,39 @@ function mark_current_focusables() {
             }
         }
 
-        let marking = current_markings[i];
+        let marking = state_markings[i];
         marking.style.left = `${markingX + Math.random() * 4}px`;
         marking.style.top = `${markingY + Math.random() * 4}px`;
-        marking.innerText = index_to_name(i, index_name_char_count).join("");
+        marking.innerText = index_to_name(i).join("");
         marking.style.display = "block";
     }
+
 }
 
-function unmark_untypeable_focusables() {
-    let charCount = compute_index_name_char_count();
-    for (let i = 0; i < current_focusables.length; i++) {
-        let current_name = index_to_name(i, charCount);
+function unmark_untypeable_selectables() {
+    for (let i = 0; i < state_selectables.length; i++) {
+        let current_name = index_to_name(i);
         let not_prefix = false;
-        for (let j = 0; j < name_input.length; j++) {
-            if (current_name[j] != name_input[j]) {
+        for (let j = 0; j < state_name_input.length; j++) {
+            if (current_name[j] != state_name_input[j]) {
                 not_prefix = true;
                 break;
             }
         }
 
         if (not_prefix) {
-            current_markings[i].style.display = "none";
+            state_markings[i].style.display = "none";
         }
     }
 }
 
-function index_to_name(index, charCount) { 
-    let name = Array(charCount).fill("");
-    for (let i = 0; i < charCount; i++) {
+function unmark_all() {
+    marking_parent_div.style.display = "none";
+}
+
+function index_to_name(index) { 
+    let name = Array(state_marking_char_count).fill("");
+    for (let i = 0; i < state_marking_char_count; i++) {
         name[i] = focus_keys[index % focus_keys.length];
         index = Math.floor(index / focus_keys.length);
     }
@@ -196,9 +173,9 @@ function index_to_name(index, charCount) {
     return name;
 }
 
-function name_to_index(name, charCount) {
+function name_to_index(name) {
     let index = 0;
-    for (let i = charCount - 1; i >= 0; i--) {
+    for (let i = state_marking_char_count - 1; i >= 0; i--) {
         let key_index = -1;
         for (let j = 0; j < focus_keys.length; j++) {
             if (focus_keys[j] == name[i]) {
@@ -219,68 +196,111 @@ function name_to_index(name, charCount) {
     return index;
 }
 
-function remove_current_markings() {
-    marking_parent.style.display = "none";
-    name_input = [];
+function state_set_mode(next_mode) {
+    if (state_mode === next_mode) {
+        return false;
+    }
+    
+    if (state_mode === mode_normal) {
+        if (next_mode === mode_select_focus) {
+            state_set_selectables_to_focusables();
+            mark_selectables();
+            state_name_input = [];
+            state_mode = next_mode;
+            return true;
+        }
+    }
+
+    if (state_mode === mode_select_focus) {
+        if (next_mode === mode_normal) {
+            unmark_all();
+            state_mode = next_mode;
+            return true;
+        }
+    }
+
+    return false;
 }
 
-document.addEventListener("keyup", (event) => {
-
-    if (document.activeElement.tagName == "INPUT"
+function event_listener_keyup_handler(key) {
+    if (document.activeElement.tagName === "INPUT"
     ||  document.activeElement.isContentEditable) {
         return true;
     }
 
-    if (event.key == "Escape" && are_focusables_marked) {
-        remove_current_markings();
-        are_focusables_marked = false;
-        event.stopImmediatePropagation();
-        event.preventDefault();
+    if (key === "Escape" && state_set_mode(mode_normal)) {
         return false;
     }
 
-    if (event.key.length != 1) {
-        return;
+    if (key.length != 1) {
+        return true;
     }
 
-    if (event.key == "f") {
-        if (are_focusables_marked) {
-            remove_current_markings();
-        } else {
-            update_current_focusables();
-            mark_current_focusables();
-        }
-        are_focusables_marked = !are_focusables_marked;
-        event.stopImmediatePropagation();
-        event.preventDefault();
+    if (key === "f" && state_mode !== mode_select_focus) {
+        state_set_mode(mode_select_focus);
         return false;
-    } 
+    }
 
-    if (are_focusables_marked) {
-        name_input.push(event.key);
-        unmark_untypeable_focusables();
+    if (key === "f" && state_mode === mode_select_focus &&
+        config_select_keys.search("f") === -1) {
 
-        let indexCharCount = compute_index_name_char_count();
-        if (name_input.length === indexCharCount) {
-            let index = name_to_index(name_input, indexCharCount);
+        state_set_mode(mode_normal);
+        return false;
+    }
 
-            remove_current_markings();
-            are_focusables_marked = false;
+    if (state_mode === mode_select_focus ||
+        state_mode === mode_select_textual) {
 
-            if (index != -1) {
-                current_focusables[index].focus({ focusVisible: true });
+        state_name_input.push(key);
+        console.log(state_name_input);
+        unmark_untypeable_selectables();
+
+        if (state_name_input.length === state_marking_char_count) {
+            let index = name_to_index(state_name_input);
+
+            state_set_mode(mode_normal);
+
+            if (index !== -1) {
+                state_selectables[index].focus({ focusVisible: true });
             }
         }
+        return false;
+    }
+}
+
+function event_listener_keyup(event) {
+    if (!event_listener_keyup_handler(event.key)) {
         event.stopImmediatePropagation();
         event.preventDefault();
         return false;
     }
-}, { capture: true });
 
-document.addEventListener("scroll", (event) => {
-    if (are_focusables_marked) {
-        remove_current_markings();
-        are_focusables_marked = false;
+    return true;
+}
+
+function event_listener_scroll(event) {
+    if (state_mode === mode_select_focus ||
+        state_mode === mode_select_textual) {
+
+        state_set_mode(mode_normal);
     }
-});
+}
 
+function init() {
+    marking_parent_div.style.display = "none";
+    marking_parent_div.style.zIndex  = "2147483646";
+    document.body.appendChild(marking_parent_div);
+
+    sync_storage.get("settings").then((result) => {
+        if (result.settings != undefined) {
+            focus_keys = result.settings?.focusKeys;
+        }
+    }, () => { console.log("Couldn't get focus keys. Using default value."); });
+
+    document.addEventListener("keyup",  event_listener_keyup, {capture: true});
+    document.addEventListener("scroll", event_listener_scroll);
+
+    console.log("Keyboard navigation enabled.");
+}
+
+init();
