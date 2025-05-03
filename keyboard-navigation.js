@@ -18,10 +18,13 @@
 const whitespace_chars = " \t\n";
 
 // Config variables
-var config_select_keys = "jdklaieurowghtzvncmxby";
+var config_select_keys          = "jdklaieurowghtzvncmxby";
+var config_marking_font_size_px = 12;
+var config_marking_font_family  = "monospace";
 
-// Dom elements
+// Document object
 const marking_parent_div = document.createElement("div");
+const document_selection = document.getSelection();
 
 // Browser abstractions
 const sync_storage = chrome?.storage.sync || browser?.storage.sync;
@@ -30,13 +33,12 @@ const sync_storage = chrome?.storage.sync || browser?.storage.sync;
 const mode_normal               = "mode_normal";
 const mode_select_focus         = "mode_select_focus";
 const mode_select_textual       = "mode_select_textual";
-const mode_select_textual_start = "mode_select_textual_start";
-const mode_select_textual_end   = "mode_select_textual_end";
 
 // State
 var state_mode               = mode_normal;
 var state_selectables        = [];
 var state_name_input         = [];
+var state_range_textual      = document.createRange();
 var state_markings           = [];
 var state_marking_char_count = 0;
 
@@ -121,16 +123,24 @@ function string_has_non_whitespace(str) {
     return false;
 }
 
-function state_set_selectables_to_textuals_rec(element) {
+// already_started is true if we already added the parent as a selectable.
+function state_set_selectables_to_textuals_rec(element, already_started) {
 
     let add_to_selectables = false;
-    for (let i = 0; i < element.childNodes.length; i++) {
+    for (let i = element.childNodes.length - 1; i >= 0; i--) {
         let child = element.childNodes[i];
+
         if (child instanceof HTMLElement) {
-            state_set_selectables_to_textuals_rec(child);
-        } else if (child.nodeName === "#text" &&
+
+            let child_already_started = 
+                i === 0 && (already_started || add_to_selectables);
+
+            state_set_selectables_to_textuals_rec(child, child_already_started);
+
+        } else if (child instanceof Text &&
                    child.textContent.length > 3 &&
                    string_has_non_whitespace(child.textContent)) {
+
             add_to_selectables = true;
         }
     }
@@ -144,8 +154,8 @@ function state_set_selectables_to_textuals_rec(element) {
 
 function state_set_selectables_to_textuals() {
     state_selectables = [];
-    state_set_selectables_to_textuals_rec(document.body);
-    console.log("selectables", state_selectables);
+    state_set_selectables_to_textuals_rec(document.body, 
+                                          /*already_started*/false);
     state_set_marking_char_count();
 }
 
@@ -159,7 +169,6 @@ function mark_selectables() {
         marking.style.borderWidth = "1px";
         marking.style.padding = "2px";
         marking.style.display = "block";
-        marking.style.color = "black";
 
         state_markings.push(marking);
         marking_parent_div.appendChild(marking);
@@ -185,6 +194,12 @@ function mark_selectables() {
             } else {
                 markingY = rect.y + rect.height / 2;
             }
+        }
+
+        if (i < state_selectables.length - 1) {
+            let next_selectable_rect = state_selectables[i]
+                                       .getBoundingClientRect();
+
         }
 
         let marking = state_markings[i];
@@ -268,7 +283,7 @@ function state_set_mode(next_mode) {
             state_set_selectables_to_focusables();
             mark_selectables();
             state_name_input = [];
-            state_mode = next_mode;
+            state_mode = mode_select_focus;
             return true;
         }
 
@@ -276,7 +291,7 @@ function state_set_mode(next_mode) {
             state_set_selectables_to_textuals();
             mark_selectables();
             state_name_input = [];
-            state_mode = next_mode;
+            state_mode = mode_select_textual;
             return true;
         }
     }
@@ -284,8 +299,15 @@ function state_set_mode(next_mode) {
     if (state_mode === mode_select_focus) {
         if (next_mode === mode_normal) {
             unmark_all();
-            state_mode = next_mode;
+            state_mode = mode_normal;
             return true;
+        }
+    }
+
+    if (state_mode === mode_select_textual) {
+        if (next_mode === mode_normal) {
+            unmark_all();
+            state_mode = mode_normal;
         }
     }
 
@@ -306,7 +328,7 @@ function event_listener_keyup_handler(key) {
         return true;
     }
 
-    if (key === "f" && state_mode !== mode_select_focus) {
+    if (key === "f" && state_mode === mode_normal) {
         state_set_mode(mode_select_focus);
         return false;
     }
@@ -318,7 +340,7 @@ function event_listener_keyup_handler(key) {
         return false;
     }
 
-    if (key === "s" && state_mode !== mode_select_textual) {
+    if (key === "s" && state_mode === mode_normal) {
         state_set_mode(mode_select_textual);
         return false;
     }
@@ -327,17 +349,25 @@ function event_listener_keyup_handler(key) {
         state_mode === mode_select_textual) {
 
         state_name_input.push(key);
-        console.log(state_name_input);
         unmark_untypeable_selectables();
 
         if (state_name_input.length === state_marking_char_count) {
             let index = name_to_index(state_name_input);
 
-            state_set_mode(mode_normal);
-
-            if (index !== -1) {
-                state_selectables[index].focus({ focusVisible: true });
+            if (index !== -1 && index < state_selectables.length) {
+                if (state_mode === mode_select_focus) {
+                    state_selectables[index].focus({ focusVisible: true });
+                } else if (state_mode === mode_select_textual) {
+                    let element = state_selectables[index];
+                    state_range_textual.setStart(element, 0);
+                    state_range_textual.setEnd(element,
+                                               element.childNodes.length);
+                    document_selection.removeAllRanges();
+                    document_selection.addRange(state_range_textual);
+                }
             }
+
+            state_set_mode(mode_normal);
         }
         return false;
     }
@@ -362,9 +392,12 @@ function event_listener_scroll(event) {
 }
 
 function init() {
-    marking_parent_div.style.display  = "none";
-    marking_parent_div.style.zIndex   = "2147483646";
-    marking_parent_div.style.position = "fixed";
+    marking_parent_div.style.display    = "none";
+    marking_parent_div.style.zIndex     = "2147483646";
+    marking_parent_div.style.position   = "fixed";
+    marking_parent_div.style.fontSize   = `${config_marking_font_size_px}px`;
+    marking_parent_div.style.fontFamily = config_marking_font_family;
+    marking_parent_div.style.color      = "black";
     document.body.appendChild(marking_parent_div);
 
     sync_storage.get("settings").then((result) => {
