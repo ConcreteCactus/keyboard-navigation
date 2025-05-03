@@ -315,8 +315,9 @@ function state_set_mode(next_mode) {
 }
 
 function event_listener_keyup_handler(key) {
-    if (document.activeElement.tagName === "INPUT"
-    ||  document.activeElement.isContentEditable) {
+    if (document.activeElement.tagName === "INPUT" ||
+        document.activeElement.tagName === "TEXTAREA" ||
+        document.activeElement.isContentEditable) {
         return true;
     }
 
