@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+
 // Constants
 const whitespace_chars = " \t\n";
 
@@ -47,7 +48,8 @@ function state_set_marking_char_count() {
 
     let selectable_count = state_selectables.length;
     while (selectable_count > config_select_keys.length - 1) {
-        selectable_count = Math.floor(selectable_count / focus_keys.length);
+        selectable_count = 
+            Math.floor(selectable_count / config_select_keys.length);
         state_marking_char_count++;
     }
 }
@@ -241,8 +243,8 @@ function unmark_all() {
 function index_to_name(index) { 
     let name = Array(state_marking_char_count).fill("");
     for (let i = 0; i < state_marking_char_count; i++) {
-        name[i] = focus_keys[index % focus_keys.length];
-        index = Math.floor(index / focus_keys.length);
+        name[i] = config_select_keys[index % config_select_keys.length];
+        index = Math.floor(index / config_select_keys.length);
     }
 
     return name;
@@ -252,8 +254,8 @@ function name_to_index(name) {
     let index = 0;
     for (let i = state_marking_char_count - 1; i >= 0; i--) {
         let key_index = -1;
-        for (let j = 0; j < focus_keys.length; j++) {
-            if (focus_keys[j] == name[i]) {
+        for (let j = 0; j < config_select_keys.length; j++) {
+            if (config_select_keys[j] == name[i]) {
                 key_index = j;
                 break;
             }
@@ -264,7 +266,7 @@ function name_to_index(name) {
             return -1;
         }
 
-        index *= focus_keys.length;
+        index *= config_select_keys.length;
         index += key_index;
     }
 
@@ -276,8 +278,6 @@ function state_set_mode(next_mode) {
         return false;
     }
 
-    console.log("Mode transition:", state_mode, "->", next_mode);
-    
     if (state_mode === mode_normal) {
         if (next_mode === mode_select_focus) {
             state_set_selectables_to_focusables();
@@ -402,7 +402,7 @@ function init() {
 
     sync_storage.get("settings").then((result) => {
         if (result.settings != undefined) {
-            focus_keys = result.settings?.focusKeys;
+            config_select_keys = result.settings?.select_keys;
         }
     }, () => { console.log("Couldn't get focus keys. Using default value."); });
 

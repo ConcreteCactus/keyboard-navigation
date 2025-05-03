@@ -1,38 +1,38 @@
 // Copyright (C) 2025  Áron Hárnási
 
 const submit_button = document.getElementById("save");
-const focus_keys_input = document.getElementById("focus-keys");
+const select_keys_input = document.getElementById("select-keys");
 const error_message_p = document.getElementById("error-message");
 const success_message_p = document.getElementById("success-message");
 const settings_form = document.getElementById("settings-form");
 const reset_button = document.getElementById("reset");
 
-const defaultFocusKeys = "jdklaieurowghtzvncmxby";
+const default_select_keys = "jdklaieurowghtzvncmxby";
 
 const sync_storage = chrome?.storage.sync || browser?.storage.sync;
 
 settings_form.addEventListener("submit", (event) => {
     event.preventDefault();
 
-    const focus_keys_value = focus_keys_input.value;
+    const select_keys_value = select_keys_input.value;
 
-    if (focus_keys_value.length < 2) {
+    if (select_keys_value.length < 2) {
         error_message_p.innerText = 
-            "Focus keys needs to be at least two characters.";
+            "Select keys need to be at least two characters.";
         return false;
     }
 
-    if (focus_keys_value !== focus_keys_value.toLowerCase()) {
+    if (select_keys_value !== select_keys_value.toLowerCase()) {
         error_message_p.innerText = 
-            "Focus keys needs to be contain only lowercase characters.";
+            "Select keys needs to be contain only lowercase characters.";
         return false;
     }
 
-    for (var i = 0; i < focus_keys_value.length; i++) {
-        for (var j = 0; j < focus_keys_value.length; j++) {
-            if (i !== j && focus_keys_value[i] === focus_keys_value[j]) {
+    for (var i = 0; i < select_keys_value.length; i++) {
+        for (var j = 0; j < select_keys_value.length; j++) {
+            if (i !== j && select_keys_value[i] === select_keys_value[j]) {
                 error_message_p.innerText =
-                    "Focus keys can't contain duplicate characters.";
+                    "Select keys can't contain duplicate characters.";
                 return false;
             }
         }
@@ -42,7 +42,7 @@ settings_form.addEventListener("submit", (event) => {
     success_message_p.innerText = "";
 
     let set_settings = sync_storage.set({ settings: {
-        focusKeys: focus_keys_value
+        select_keys: select_keys_value
     }});
     set_settings.then(() => {
         success_message_p.innerText = "Settings were saved successfully.";
@@ -57,16 +57,16 @@ document.addEventListener("DOMContentLoaded", () => {
     let get_settings = sync_storage.get("settings");
 
     get_settings.then((result) => {
-        focus_keys_input.disabled = false;
-        focus_keys_input.value = result.settings?.focusKeys
-                                 || defaultFocusKeys;
+        select_keys_input.disabled = false;
+        select_keys_input.value = result.settings?.select_keys
+                                 || default_select_keys;
     }, () => {
-        focus_keys_input.disabled = false;
-        focus_keys_input.value = defaultFocusKeys;
+        select_keys_input.disabled = false;
+        select_keys_input.value = default_select_keys;
     });
 });
 
 reset_button.addEventListener("click", (event) => {
     event.preventDefault();
-    focus_keys_input.value = defaultFocusKeys;
+    select_keys_input.value = default_select_keys;
 });

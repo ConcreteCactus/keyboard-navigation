@@ -1,7 +1,12 @@
 {
     "addons": {
         "keyboard-navigation@aronharnasi.com": {
-            "updates": []
+            "updates": [
+                {
+                    "version": "1.1.1",
+                    "update_link": "https://github.com/ConcreteCactus/keyboard-navigation/releases/download/v1.1.1/keyboard-navigation-v1.1.1.xpi"
+                }
+            ]
         }
     }
 }
